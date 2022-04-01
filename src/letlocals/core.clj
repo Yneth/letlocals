@@ -4,10 +4,6 @@
   (and (coll? exp)
        (= 'bind (first exp))))
 
-(defn bind-group? [exps]
-  (and (coll? exps)
-       (bind? (first exps))))
-
 (defn ->bind-exception [exp reason]
   (IllegalStateException.
     (str "Invalid bind statement: " exp \newline reason)))
@@ -27,17 +23,6 @@
   (when (> (count all) 3)
     (throw (->bind-exception all (str "unnecessary options: " other)))))
 
-(defn bind-group->let [bind-exps prev-exps]
-  (run! validate-bind bind-exps)
-  (let [bindings
-        (into
-          []
-          (comp
-            (map (fn [[_ var-name var-val]] [var-name var-val]))
-            cat)
-          bind-exps)]
-    `(let ~bindings ~@prev-exps)))
-
 (def bind
   "used only for editor autocomplete & validation"
   ^{:macro true}
@@ -48,23 +33,20 @@
   "Nested bind expressions are not supported!"
   {:special-form true, :forms '[(letlocals exprs* (bind name val) exprs*)]}
   [& body]
-  (let [partitions
-        (vec (partition-by bind? body))
+  (let [exp->let-binding
+        (fn [exp]
+          (if (bind? exp)
+            (let [[_ var-name var-value :as bind] exp]
+              (validate-bind bind)
+              [var-name var-value])
+            #_else
+            ['_ exp]))
 
-        result-body
-        (->>
-          partitions
-          (rseq)
-          (reduce
-            (fn [acc exp-group]
-              (cond
-                (bind-group? exp-group)
-                (bind-group->let exp-group acc)
+        bindings
+        (into []
+              (comp (map exp->let-binding) cat)
+              (butlast body))
 
-                :else
-                (let [tail (when-not (nil? acc) (list acc))]
-                  (concat exp-group tail))))
-            nil))]
-    (if (bind-group? (first partitions))
-      result-body
-      `(do ~@result-body))))
+        ret
+        (last body)]
+    `(let ~bindings ~ret)))

@@ -72,10 +72,11 @@
         (validate-bind '(letlocals (bind nil 100))))))
 
 (deftest letlocal-macroexpand-test
-  (is (= '(let* [a 100 b 100]
-            (println a)
-            (let* [c nil]
-              (println b)))
+  (is (= '(let* [a 100
+                 b 100
+                 _ (println a)
+                 c nil]
+            (println b))
          (clojure.walk/macroexpand-all
            '(letlocals
               (bind a 100)

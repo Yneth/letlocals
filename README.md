@@ -4,7 +4,7 @@ Missing part of clojure
 
 ## Usage
 
-Tired of writing, the following?
+Tired of writing the following?
 
 ```clojure
 (let [a (mk-a-thing)
